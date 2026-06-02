@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 from time import time
-from typing import DefaultDict
 
 
 @dataclass
@@ -12,7 +12,7 @@ class ActionRateLimiter:
     It's enough to stop basic spam in a single process deployment.
     """
 
-    requests: DefaultDict[tuple[int, str], list[float]] = field(default_factory=dict)
+    requests: defaultdict[tuple[int, str], list[float]] = field(default_factory=dict)
     max_requests: int = 10
     window_seconds: int = 60
 
@@ -25,4 +25,3 @@ class ActionRateLimiter:
         history.append(now)
         self.requests[key] = history
         return len(history) <= self.max_requests
-

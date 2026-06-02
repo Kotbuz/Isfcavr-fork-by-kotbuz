@@ -1,10 +1,11 @@
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import HTMLResponse
+
+from src.db.database import init_db
 from src.routers import box_router, feedback_router
 from src.routers.auth_router import router as auth_router
-from src.db.database import init_db
-from fastapi.middleware.cors import CORSMiddleware 
 
 app = FastAPI()
 
@@ -21,6 +22,7 @@ app.include_router(auth_router)
 
 # Create tables at import time so TestClient/pytest works reliably.
 init_db()
+
 
 def custom_openapi():
     if app.openapi_schema:
@@ -42,7 +44,9 @@ def custom_openapi():
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
+
 app.openapi = custom_openapi
+
 
 @app.get("/", response_class=HTMLResponse)
 def root():
@@ -64,6 +68,7 @@ def root():
         </html>
         """
     )
+
 
 @app.get("/health")
 def health():

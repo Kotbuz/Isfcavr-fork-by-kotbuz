@@ -1,7 +1,9 @@
 from pydantic import BaseModel, ConfigDict
 
+
 class ReplyCreate(BaseModel):
     text: str
+
 
 class ReplyOut(BaseModel):
     id: int

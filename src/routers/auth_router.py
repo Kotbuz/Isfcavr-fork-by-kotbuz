@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
+
 from src.db.database import get_db
-from src.schemas.user import RegisterRequest, LoginRequest, AuthResponse
-from src.schemas.box import UserBoxesResponse, UserFeedbacksResponse, BoxUuidOut, FeedbackShortOut, ReplyOut as BoxReplyOut
-from src.services.user_service import create_user, authenticate_user, get_user_by_token, get_user_by_username
-from src.models.user import User
 from src.models.box import Box
 from src.models.feedback import Feedback
+from src.models.user import User
+from src.schemas.box import BoxUuidOut, FeedbackShortOut, UserBoxesResponse, UserFeedbacksResponse
+from src.schemas.box import ReplyOut as BoxReplyOut
+from src.schemas.user import AuthResponse, LoginRequest, RegisterRequest
+from src.services.user_service import authenticate_user, create_user, get_user_by_token, get_user_by_username
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -62,9 +64,7 @@ def my_boxes(authorization: str = Header(None, alias="Authorization"), db: Sessi
 @router.get("/my-feedbacks", response_model=UserFeedbacksResponse)
 def my_feedbacks(authorization: str = Header(None, alias="Authorization"), db: Session = Depends(get_db)):
     user = _get_user_or_401(authorization, db)
-    my_box_ids = [
-        row[0] for row in db.query(Box.id).filter(Box.user_id == user.id).all()
-    ]
+    my_box_ids = [row[0] for row in db.query(Box.id).filter(Box.user_id == user.id).all()]
     if not my_box_ids:
         return UserFeedbacksResponse(feedbacks=[])
 
@@ -73,7 +73,9 @@ def my_feedbacks(authorization: str = Header(None, alias="Authorization"), db: S
         box = db.query(Box).filter(Box.id == fb.box_id).first()
         if not box:
             continue
-        replies = [BoxReplyOut(id=reply.id, text=reply.text, created_at=reply.created_at.isoformat()) for reply in fb.replies]
+        replies = [
+            BoxReplyOut(id=reply.id, text=reply.text, created_at=reply.created_at.isoformat()) for reply in fb.replies
+        ]
         feedbacks.append(
             FeedbackShortOut(
                 id=fb.id,

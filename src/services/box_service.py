@@ -1,7 +1,8 @@
-from src.models.box import Box
-from src.models.user import User
-from src.utils.security import generate_uuid, generate_token, generate_auth_token
 from sqlalchemy.orm import Session
+
+from src.models.box import Box
+from src.utils.security import generate_token, generate_uuid
+
 
 def create_box(db: Session, user_id: int | None = None) -> Box:
     box = Box(
