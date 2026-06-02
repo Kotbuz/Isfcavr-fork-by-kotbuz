@@ -1,5 +1,6 @@
-from src.utils.validators import moderate_text
 import pytest
+
+from src.utils.validators import moderate_text
 
 
 def test_moderate_text_removes_links_and_emails():

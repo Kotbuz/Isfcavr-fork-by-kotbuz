@@ -1,0 +1,33 @@
+[project]
+name = "isfcavr"
+version = "0.1.0"
+description = "Anonymous Verified Reviews System"
+requires-python = ">=3.11"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src", "bot", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+]
+ignore = [
+    "B008",  # Depends() in FastAPI route defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src", "bot"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/test_api.py" = ["E402"]

@@ -1,5 +1,6 @@
-import os
 import importlib
+import os
+
 from fastapi.testclient import TestClient
 
 os.environ.setdefault(
@@ -7,6 +8,7 @@ os.environ.setdefault(
     "postgresql://admin:adminadmin@localhost:5433/anonymous",
 )
 import src.db.database as database
+
 importlib.reload(database)
 database.init_db()
 
@@ -41,7 +43,9 @@ def test_full_box_lifecycle():
     assert owner_view.status_code == 200
     assert len(owner_view.json()["feedbacks"]) == 1
 
-    reply_fail = client.post(f"/feedback/{fb_data['id']}/reply", json={"text": "Owner reply"}, params={"token": "wrong"})
+    reply_fail = client.post(
+        f"/feedback/{fb_data['id']}/reply", json={"text": "Owner reply"}, params={"token": "wrong"}
+    )
     assert reply_fail.status_code == 403
 
     reply_ok = client.post(f"/feedback/{fb_data['id']}/reply", json={"text": "Owner reply"}, params={"token": token})
@@ -126,7 +130,3 @@ def test_auth_register_and_login():
     assert my_feedbacks_after.status_code == 200
     assert len(my_feedbacks_after.json()["feedbacks"]) == 1
     assert my_feedbacks_after.json()["feedbacks"][0]["box_uuid"] == created_box.json()["uuid"]
-
-
-
-

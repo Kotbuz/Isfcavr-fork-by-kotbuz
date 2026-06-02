@@ -11,4 +11,3 @@ class OwnerStates(StatesGroup):
     awaiting_owner_token = State()
     awaiting_reply_feedback_id = State()
     awaiting_reply_text = State()
-

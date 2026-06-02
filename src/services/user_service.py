@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
+
 from src.models.user import User
-from src.utils.security import hash_password, generate_auth_token, verify_password
+from src.utils.security import generate_auth_token, hash_password, verify_password
 
 
 def get_user_by_username(db: Session, username: str) -> User | None:

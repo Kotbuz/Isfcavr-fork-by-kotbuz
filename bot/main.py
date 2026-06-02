@@ -1,11 +1,13 @@
 import asyncio
 import logging
 import random
-import httpx
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
+
+import httpx
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ApiError(Exception):
@@ -14,9 +16,9 @@ class ApiError(Exception):
 
 
 class ApiClient:
-    def __init__(self, base_url: str, transport: Optional[httpx.AsyncBaseTransport] = None):
+    def __init__(self, base_url: str, transport: httpx.AsyncBaseTransport | None = None):
         self.base_url = base_url.rstrip("/")
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
         self._transport = transport
         self._max_retries = 2
         self._backoff_factor = 0.5
@@ -36,7 +38,9 @@ class ApiClient:
             await self._client.aclose()
             self._client = None
 
-    async def _request(self, method: str, path: str, *, params: dict[str, Any] | None = None, json: Any | None = None) -> Any:
+    async def _request(
+        self, method: str, path: str, *, params: dict[str, Any] | None = None, json: Any | None = None
+    ) -> Any:
         attempt = 0
         while True:
             try:
@@ -48,7 +52,7 @@ class ApiClient:
                     return resp.json() if resp.content else None
 
                 if resp.status_code in {503, 504} and attempt < self._max_retries:
-                    delay = self._backoff_factor * (2 ** attempt) + random.uniform(0, 0.1)
+                    delay = self._backoff_factor * (2**attempt) + random.uniform(0, 0.1)
                     logger.warning(
                         "Temporary API error %s for %s %s, retrying after %.2fs",
                         resp.status_code,
@@ -71,27 +75,29 @@ class ApiClient:
                 raise ApiError(status_code=resp.status_code, detail=detail or resp.text or "API error")
             except httpx.TimeoutException as exc:
                 if attempt < self._max_retries:
-                    delay = self._backoff_factor * (2 ** attempt) + random.uniform(0, 0.1)
+                    delay = self._backoff_factor * (2**attempt) + random.uniform(0, 0.1)
                     logger.warning("Timeout on API request %s %s, retrying after %.2fs", method, path, delay)
                     attempt += 1
                     await asyncio.sleep(delay)
                     continue
                 logger.error("API request timeout: %s", exc)
-                raise ApiError(status_code=504, detail="API request timeout")
+                raise ApiError(status_code=504, detail="API request timeout") from exc
             except httpx.RequestError as exc:
                 if attempt < self._max_retries:
-                    delay = self._backoff_factor * (2 ** attempt) + random.uniform(0, 0.1)
-                    logger.warning("Network error on API request %s %s, retrying after %.2fs: %s", method, path, delay, exc)
+                    delay = self._backoff_factor * (2**attempt) + random.uniform(0, 0.1)
+                    logger.warning(
+                        "Network error on API request %s %s, retrying after %.2fs: %s", method, path, delay, exc
+                    )
                     attempt += 1
                     await asyncio.sleep(delay)
                     continue
                 logger.error("API connection error: %s", exc)
-                raise ApiError(status_code=503, detail="API service unavailable")
+                raise ApiError(status_code=503, detail="API service unavailable") from exc
             except ApiError:
                 raise
             except Exception as exc:
                 logger.error("Unexpected API error: %s", exc)
-                raise ApiError(status_code=500, detail="Unexpected error")
+                raise ApiError(status_code=500, detail="Unexpected error") from exc
 
     async def create_box(self) -> dict[str, Any]:
         return await self._request("POST", "/box")
