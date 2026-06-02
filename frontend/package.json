@@ -11,7 +11,7 @@
   "build:web": "tsc && vite build",
   "build:electron": "VITE_USE_ELECTRON=true tsc && vite build && electron-builder",
   "build": "npm run build:electron",
-  "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+  "lint": "eslint src electron --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
   "preview": "vite preview",
   "watch:css": "tailwindcss -i ./src/styles/styles.css -o ./src/styles/style.css --watch",
   "tailwind:watch": "tailwindcss -i ./src/styles/styles.css -o ./src/styles/style.css --watch",

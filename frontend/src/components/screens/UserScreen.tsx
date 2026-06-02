@@ -1,4 +1,3 @@
-import { useState } from "react";
 import UserCode from "../medium/user/UserCode/UserCode";
 import UserInfo from "../medium/user/UserInfo/UserInfo";
 import UserReview from "../medium/user/UserReview/UserReview";

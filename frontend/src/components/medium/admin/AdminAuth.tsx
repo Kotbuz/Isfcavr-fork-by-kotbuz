@@ -4,6 +4,10 @@ import Card from "../../small/card/card";
 import Input from "../../small/input/input";
 import { useAuthStore } from "../../../utils/useAuthStore";
 import { API_BASE_URL } from "../../../utils/api";
+import {
+  getErrorMessage,
+  type ValidationErrorItem,
+} from "../../../utils/errors";
 
 interface AuthCardProps {
   setAuthToken: (value: string | null) => void;
@@ -56,7 +60,7 @@ const registerFunc = async (
       const errorData = await response.json();
       if (Array.isArray(errorData.detail)) {
         const textError = errorData.detail
-          .map((err: any) => translateError(err.msg))
+          .map((err: ValidationErrorItem) => translateError(err.msg))
           .join(". ");
         throw new Error(textError);
       }
@@ -77,10 +81,13 @@ const registerFunc = async (
       useAuthStore.getState().setAuth(token, { username });
     }
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Request error:", error);
-    throw (
-      error.message || "Failed to connect to the server. Check your connection"
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Failed to connect to the server. Check your connection"
+      )
     );
   }
 };
@@ -106,7 +113,7 @@ const loginFunc = async (username: string, password: string) => {
       }
       if (Array.isArray(errorData.detail)) {
         const textError = errorData.detail
-          .map((err: any) => translateError(err.msg))
+          .map((err: ValidationErrorItem) => translateError(err.msg))
           .join(". ");
         throw new Error(textError);
       }
@@ -121,10 +128,13 @@ const loginFunc = async (username: string, password: string) => {
       useAuthStore.getState().setAuth(token, { username });
     }
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Request error:", error);
-    throw (
-      error.message || "Failed to connect to the server. Check your connection"
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Failed to connect to the server. Check your connection"
+      )
     );
   }
 };
@@ -143,8 +153,8 @@ const Login = ({ setIsLogin, setAuthToken, setScreen }: CardProps) => {
         const savedToken = localStorage.getItem("token");
         setAuthToken(savedToken);
       }
-    } catch (errMessage: any) {
-      setError(errMessage);
+    } catch (errMessage: unknown) {
+      setError(getErrorMessage(errMessage));
     }
   };
 
@@ -217,8 +227,8 @@ const Registration = ({ setIsLogin, setAuthToken, setScreen }: CardProps) => {
         const savedToken = localStorage.getItem("token");
         setAuthToken(savedToken);
       }
-    } catch (errMessage: any) {
-      setError(errMessage);
+    } catch (errMessage: unknown) {
+      setError(getErrorMessage(errMessage));
     }
   };
 
