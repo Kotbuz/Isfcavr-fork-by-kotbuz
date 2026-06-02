@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import UUIDLink from "./uuidLink";
 import { API_BASE_URL } from "../../../../utils/api";
+import { getErrorMessage } from "../../../../utils/errors";
 
 interface BoxData {
   id?: string | number;
@@ -43,9 +44,9 @@ export default function BoxList() {
 
         const data = await response.json();
         setBoxes(data.boxes || []);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Ошибка при получении боксов:", err);
-        setError(err.message || "Ошибка соединения с сервером");
+        setError(getErrorMessage(err, "Ошибка соединения с сервером"));
       } finally {
         setIsLoading(false);
       }

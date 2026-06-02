@@ -22,12 +22,20 @@ export default function App() {
     return queryParams.get("uuid") || null;
   });
 
-  const isElectron =
-    (typeof window !== "undefined" &&
-      typeof window.process !== "undefined" &&
-      (window.process as any).type === "renderer") ||
-    (typeof navigator !== "undefined" &&
-      navigator.userAgent.toLowerCase().includes("electron"));
+  const isElectron = (() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    const process = (window as Window & { process?: { type?: string } })
+      .process;
+    if (process?.type === "renderer") {
+      return true;
+    }
+    return (
+      typeof navigator !== "undefined" &&
+      navigator.userAgent.toLowerCase().includes("electron")
+    );
+  })();
 
   useEffect(() => {
     const autoLogin = async () => {

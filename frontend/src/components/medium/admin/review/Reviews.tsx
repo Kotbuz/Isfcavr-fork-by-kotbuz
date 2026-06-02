@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Review from "./review";
 import { API_BASE_URL } from "../../../../utils/api";
+import { getErrorMessage } from "../../../../utils/errors";
 
 interface FeedbackData {
   id?: string | number;
@@ -41,9 +42,9 @@ export default function LatestReviewsCard() {
         const data = await response.json();
         // Записываем массив из поля "feedbacks", как показано в Swagger
         setFeedbacks(data.feedbacks || []);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Ошибка при получении отзывов:", err);
-        setError(err.message || "Ошибка соединения с сервером");
+        setError(getErrorMessage(err, "Ошибка соединения с сервером"));
       } finally {
         setIsLoading(false);
       }

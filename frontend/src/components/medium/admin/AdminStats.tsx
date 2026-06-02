@@ -7,6 +7,16 @@ import ActivityChart from "./activityChart/activityChart";
 import BoxList from "./uuidLink/linkList";
 import LatestReviewsCard from "./review/Reviews";
 import { API_BASE_URL } from "../../../utils/api";
+import { getErrorMessage } from "../../../utils/errors";
+
+interface FeedbackStatItem {
+  is_moderated?: boolean;
+  created_at?: string;
+}
+
+interface BoxStatItem {
+  clicks?: number;
+}
 
 interface AdminPanelProps {
   setAuthToken: (value: string | null) => void;
@@ -137,7 +147,7 @@ export const Statistics = ({
 
           setTotalReviews(list.length);
           const approved = list.filter(
-            (f: any) => f.is_moderated !== false
+            (f: FeedbackStatItem) => f.is_moderated !== false
           ).length;
           setModeratedReviews(approved);
           setBlockedReviews(list.length - approved);
@@ -151,7 +161,7 @@ export const Statistics = ({
           const list = boxesData.boxes || [];
           setUuidLinks(list.length);
           const totalClicks = list.reduce(
-            (sum: number, box: any) => sum + (box.clicks || 0),
+            (sum: number, box: BoxStatItem) => sum + (box.clicks || 0),
             0
           );
           setClicksCount(totalClicks);
@@ -341,9 +351,9 @@ export const Links = () => {
 
       const data = await response.json();
       setBoxes(data.boxes || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Ошибка при получении боксов:", err);
-      setError(err.message || "Ошибка соединения с сервером");
+      setError(getErrorMessage(err, "Ошибка соединения с сервером"));
     } finally {
       setIsLoading(false);
     }
@@ -371,9 +381,9 @@ export const Links = () => {
 
       // После успешного создания принудительно обновляем весь список
       await fetchBoxes();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Ошибка создания ссылки:", err);
-      alert(err.message || "Не удалось создать ссылку");
+      alert(getErrorMessage(err, "Не удалось создать ссылку"));
     } finally {
       setIsCreating(false);
     }
@@ -463,9 +473,9 @@ export const Reviews = () => {
 
       const data = await response.json();
       setFeedbacks(data.feedbacks || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Ошибка при получении отзывов:", err);
-      setError(err.message || "Ошибка соединения с сервером");
+      setError(getErrorMessage(err, "Ошибка соединения с сервером"));
     } finally {
       setIsLoading(false);
     }

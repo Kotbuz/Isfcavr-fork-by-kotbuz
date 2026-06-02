@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Button from "../../../small/button/button";
 import Card from "../../../small/card/card";
 import Input from "../../../small/input/input";
