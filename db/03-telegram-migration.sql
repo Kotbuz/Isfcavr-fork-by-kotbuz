@@ -1,0 +1,12 @@
+-- Для уже существующего тома PostgreSQL (если БД создана до telegram-фичи):
+ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_user_id BIGINT UNIQUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS telegram_linked_at TIMESTAMP WITHOUT TIME ZONE;
+
+CREATE TABLE IF NOT EXISTS telegram_link_codes (
+    id SERIAL PRIMARY KEY,
+    code TEXT UNIQUE NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    used_at TIMESTAMP WITHOUT TIME ZONE,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

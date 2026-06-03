@@ -5,6 +5,7 @@
 ### Run commands:
 
 ```
+# Переменные VITE_* — в корневом .env (см. .env.example в корне репозитория)
 cd frontend
 npm install
 npm run dev

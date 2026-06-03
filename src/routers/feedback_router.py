@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from src.db.database import get_db
@@ -13,18 +13,27 @@ from src.schemas.feedback import FeedbackCreate, FeedbackOut
 from src.schemas.reply import ReplyCreate, ReplyOut
 from src.services.feedback_service import create_feedback
 from src.services.reply_service import create_reply
+from src.services.telegram_notify_service import notify_new_feedback_for_box
 
 router = APIRouter()
 
 
 @router.post("/box/{uuid}/feedback", response_model=FeedbackOut, status_code=status.HTTP_200_OK)
-def send_feedback(uuid: str, feedback: FeedbackCreate, request: Request, db: Session = Depends(get_db)):
+def send_feedback(
+    uuid: str,
+    feedback: FeedbackCreate,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     check_rate(request.client.host, "POST:/box/{uuid}/feedback")
     box = db.query(Box).filter(Box.uuid == uuid).first()
     if box is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Box not found")
 
     created = create_feedback(db, box.id, feedback.text)
+    if box.user_id is not None:
+        background_tasks.add_task(notify_new_feedback_for_box, uuid)
     # Normalize response types to match Pydantic schema (created_at is a string in API contract).
     return FeedbackOut(
         id=created.id,

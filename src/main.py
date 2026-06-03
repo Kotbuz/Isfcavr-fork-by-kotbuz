@@ -4,8 +4,10 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse
 
 from src.db.database import init_db
+import src.models.telegram_link_code  # noqa: F401 — register ORM models
 from src.routers import box_router, feedback_router
 from src.routers.auth_router import router as auth_router
+from src.routers.internal_router import router as internal_router
 
 app = FastAPI()
 
@@ -19,6 +21,7 @@ app.add_middleware(
 app.include_router(box_router.router)
 app.include_router(feedback_router.router)
 app.include_router(auth_router)
+app.include_router(internal_router)
 
 # Create tables at import time so TestClient/pytest works reliably.
 init_db()

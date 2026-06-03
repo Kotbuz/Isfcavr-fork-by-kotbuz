@@ -1,3 +1,5 @@
+from datetime import UTC
+
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -7,7 +9,14 @@ from src.models.feedback import Feedback
 from src.models.user import User
 from src.schemas.box import BoxUuidOut, FeedbackShortOut, UserBoxesResponse, UserFeedbacksResponse
 from src.schemas.box import ReplyOut as BoxReplyOut
+from src.schemas.telegram import TelegramLinkTokenResponse, TelegramStatusResponse
 from src.schemas.user import AuthResponse, LoginRequest, RegisterRequest
+from src.services.telegram_link_service import (
+    build_deep_link,
+    create_link_code,
+    get_telegram_status,
+    unlink_telegram,
+)
 from src.services.user_service import authenticate_user, create_user, get_user_by_token, get_user_by_username
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -88,3 +97,25 @@ def my_feedbacks(authorization: str = Header(None, alias="Authorization"), db: S
             )
         )
     return UserFeedbacksResponse(feedbacks=feedbacks)
+
+
+@router.get("/telegram/status", response_model=TelegramStatusResponse)
+def telegram_status(authorization: str = Header(None, alias="Authorization"), db: Session = Depends(get_db)):
+    user = _get_user_or_401(authorization, db)
+    return TelegramStatusResponse(linked=get_telegram_status(user))
+
+
+@router.post("/telegram/link-token", response_model=TelegramLinkTokenResponse)
+def telegram_link_token(authorization: str = Header(None, alias="Authorization"), db: Session = Depends(get_db)):
+    user = _get_user_or_401(authorization, db)
+    row = create_link_code(db, user)
+    expires = row.expires_at.isoformat()
+    if row.expires_at.tzinfo is None:
+        expires = row.expires_at.replace(tzinfo=UTC).isoformat()
+    return TelegramLinkTokenResponse(link_url=build_deep_link(row.code), expires_at=expires)
+
+
+@router.delete("/telegram/unlink", status_code=status.HTTP_204_NO_CONTENT)
+def telegram_unlink(authorization: str = Header(None, alias="Authorization"), db: Session = Depends(get_db)):
+    user = _get_user_or_401(authorization, db)
+    unlink_telegram(db, user)

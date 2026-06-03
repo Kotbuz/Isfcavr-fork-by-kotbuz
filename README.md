@@ -131,10 +131,11 @@ cd Information-system-for-collecting-anonymous-verified-reviews
 ```bash
 .env
 ```
-Пример содержимого:
+Пример содержимого — один файл `.env` в корне (скопируйте из `.env.example`):
 ```env
 TELEGRAM_BOT_TOKEN=your_token
-API_BASE_URL=http://localhost:8000
+VITE_API_BASE_URL=http://localhost:8000
+PUBLIC_FRONTEND_URL=http://localhost:5173
 ```
 ---
 # 🐳 Запуск через Docker (рекомендуется)

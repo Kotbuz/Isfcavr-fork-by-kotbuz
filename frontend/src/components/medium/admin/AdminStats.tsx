@@ -6,6 +6,7 @@ import UUIDLink from "./uuidLink/uuidLink";
 import ActivityChart from "./activityChart/activityChart";
 import BoxList from "./uuidLink/linkList";
 import LatestReviewsCard from "./review/Reviews";
+import AdminTelegram from "./AdminTelegram";
 import { API_BASE_URL } from "../../../utils/api";
 import { getErrorMessage } from "../../../utils/errors";
 
@@ -62,6 +63,7 @@ export default function AdminPanel({
               w="full"
               onClick={() => setActiveTab("reviews")}
             />
+            <AdminTelegram />
           </div>
           <div>
             <Button text="Выход" w="full" onClick={handleLogout} />

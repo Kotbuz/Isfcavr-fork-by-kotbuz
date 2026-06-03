@@ -7,6 +7,8 @@ const enableElectron = process.env.VITE_USE_ELECTRON === 'true'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Переменные VITE_* читаются из корневого .env (один файл на весь проект)
+  envDir: path.resolve(__dirname, '..'),
   plugins: [
     react(),
     enableElectron && electron({

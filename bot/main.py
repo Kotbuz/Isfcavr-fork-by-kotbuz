@@ -1,121 +1,132 @@
 import asyncio
 import logging
-import random
-from dataclasses import dataclass
-from typing import Any
+import os
+import sys
 
 import httpx
+from aiogram import Bot, Dispatcher
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.exceptions import TelegramNetworkError
+from aiogram.filters import CommandStart
+from aiogram.types import Message
 
-from src.core.env import load_env
-
-load_env()
-
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000").rstrip("/")
+BOT_SECRET = os.getenv("INTERNAL_BOT_SECRET", "")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_PROXY_URL = os.getenv("TELEGRAM_PROXY_URL", "").strip()
 
-@dataclass
-class ApiError(Exception):
-    status_code: int
-    detail: str
+POLL_RETRY_MIN_SECONDS = 5
+POLL_RETRY_MAX_SECONDS = 120
+
+dp = Dispatcher()
 
 
-class ApiClient:
-    def __init__(self, base_url: str, transport: httpx.AsyncBaseTransport | None = None):
-        self.base_url = base_url.rstrip("/")
-        self._client: httpx.AsyncClient | None = None
-        self._transport = transport
-        self._max_retries = 2
-        self._backoff_factor = 0.5
+def _create_bot() -> Bot:
+    if TELEGRAM_PROXY_URL:
+        logger.info("Using TELEGRAM_PROXY_URL for Telegram API")
+        session = AiohttpSession(proxy=TELEGRAM_PROXY_URL)
+    else:
+        session = AiohttpSession()
+    return Bot(token=TELEGRAM_BOT_TOKEN, session=session)
 
-    async def _get_client(self) -> httpx.AsyncClient:
-        if self._client is None:
-            self._client = httpx.AsyncClient(
-                timeout=httpx.Timeout(10.0, connect=5.0, read=8.0, write=5.0),
-                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
-                http2=False,
-                transport=self._transport,
+
+async def _confirm_link_on_api(code: str, telegram_user_id: int) -> tuple[bool, str]:
+    if not BOT_SECRET:
+        return False, "Сервис привязки не настроен (INTERNAL_BOT_SECRET)."
+
+    url = f"{API_BASE_URL}/internal/telegram/confirm"
+    payload = {"code": code, "telegram_user_id": telegram_user_id}
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                url,
+                json=payload,
+                headers={"X-Bot-Secret": BOT_SECRET},
             )
-        return self._client
-
-    async def aclose(self) -> None:
-        if self._client is not None:
-            await self._client.aclose()
-            self._client = None
-
-    async def _request(
-        self, method: str, path: str, *, params: dict[str, Any] | None = None, json: Any | None = None
-    ) -> Any:
-        attempt = 0
-        while True:
+            if resp.status_code == 200:
+                data = resp.json()
+                username = data.get("username", "")
+                return True, f"Telegram привязан к аккаунту «{username}». Уведомления о новых отзывах включены."
+            detail = "Не удалось привязать аккаунт."
             try:
-                client = await self._get_client()
-                url = f"{self.base_url}{path}"
-                resp = await client.request(method, url, params=params, json=json)
+                body = resp.json()
+                if isinstance(body, dict) and body.get("detail"):
+                    detail = str(body["detail"])
+            except Exception:
+                pass
+            if resp.status_code == 400 and "expired" in detail.lower():
+                detail = "Ссылка истекла. Создайте новую на сайте в админке."
+            if resp.status_code == 400 and "already used" in detail.lower():
+                detail = "Ссылка уже использована. Создайте новую на сайте."
+            if resp.status_code == 404:
+                detail = "Неверная ссылка. Создайте новую на сайте в админке."
+            return False, detail
+    except httpx.HTTPError as exc:
+        logger.error("API confirm link error: %s", exc)
+        return False, "Сервер недоступен. Попробуйте позже."
 
-                if 200 <= resp.status_code < 300:
-                    return resp.json() if resp.content else None
 
-                if resp.status_code in {503, 504} and attempt < self._max_retries:
-                    delay = self._backoff_factor * (2**attempt) + random.uniform(0, 0.1)
-                    logger.warning(
-                        "Temporary API error %s for %s %s, retrying after %.2fs",
-                        resp.status_code,
-                        method,
-                        path,
-                        delay,
-                    )
-                    attempt += 1
-                    await asyncio.sleep(delay)
-                    continue
+@dp.message(CommandStart())
+async def cmd_start(message: Message) -> None:
+    args = ""
+    if message.text:
+        parts = message.text.split(maxsplit=1)
+        if len(parts) > 1:
+            args = parts[1].strip()
 
-                detail = None
-                try:
-                    payload = resp.json()
-                    if isinstance(payload, dict):
-                        detail = payload.get("detail")
-                except Exception:
-                    detail = None
+    if args.startswith("link_"):
+        code = args[5:]
+        if not code:
+            await message.answer("Неверная ссылка привязки.")
+            return
+        ok, text = await _confirm_link_on_api(code, message.from_user.id)
+        await message.answer(text)
+        return
 
-                raise ApiError(status_code=resp.status_code, detail=detail or resp.text or "API error")
-            except httpx.TimeoutException as exc:
-                if attempt < self._max_retries:
-                    delay = self._backoff_factor * (2**attempt) + random.uniform(0, 0.1)
-                    logger.warning("Timeout on API request %s %s, retrying after %.2fs", method, path, delay)
-                    attempt += 1
-                    await asyncio.sleep(delay)
-                    continue
-                logger.error("API request timeout: %s", exc)
-                raise ApiError(status_code=504, detail="API request timeout") from exc
-            except httpx.RequestError as exc:
-                if attempt < self._max_retries:
-                    delay = self._backoff_factor * (2**attempt) + random.uniform(0, 0.1)
-                    logger.warning(
-                        "Network error on API request %s %s, retrying after %.2fs: %s", method, path, delay, exc
-                    )
-                    attempt += 1
-                    await asyncio.sleep(delay)
-                    continue
-                logger.error("API connection error: %s", exc)
-                raise ApiError(status_code=503, detail="API service unavailable") from exc
-            except ApiError:
-                raise
-            except Exception as exc:
-                logger.error("Unexpected API error: %s", exc)
-                raise ApiError(status_code=500, detail="Unexpected error") from exc
+    await message.answer(
+        "Бот уведомлений о новых отзывах.\n\n"
+        "Чтобы привязать Telegram к аккаунту на сайте, откройте ссылку из админки."
+    )
 
-    async def create_box(self) -> dict[str, Any]:
-        return await self._request("POST", "/box")
 
-    async def send_feedback(self, box_uuid: str, text: str) -> dict[str, Any]:
-        return await self._request("POST", f"/box/{box_uuid}/feedback", json={"text": text})
+async def _run_polling_once() -> None:
+    bot = _create_bot()
+    try:
+        logger.info("Starting Telegram bot polling")
+        await dp.start_polling(bot, handle_signals=False)
+    finally:
+        await bot.session.close()
 
-    async def get_box_feedbacks(self, box_uuid: str, token: str) -> dict[str, Any]:
-        return await self._request("GET", f"/box/{box_uuid}", params={"token": token})
 
-    async def send_reply(self, feedback_id: int, token: str, text: str) -> dict[str, Any]:
-        return await self._request(
-            "POST",
-            f"/feedback/{feedback_id}/reply",
-            params={"token": token},
-            json={"text": text},
-        )
+async def main() -> None:
+    if not TELEGRAM_BOT_TOKEN:
+        logger.error("TELEGRAM_BOT_TOKEN is not set")
+        sys.exit(1)
+
+    delay = POLL_RETRY_MIN_SECONDS
+    while True:
+        try:
+            await _run_polling_once()
+            delay = POLL_RETRY_MIN_SECONDS
+        except TelegramNetworkError as exc:
+            logger.error(
+                "Нет соединения с api.telegram.org: %s. "
+                "Часто это блокировка сети из Docker — включите VPN на ПК или задайте TELEGRAM_PROXY_URL в .env. "
+                "Повтор через %s с.",
+                exc,
+                delay,
+            )
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, POLL_RETRY_MAX_SECONDS)
+        except Exception as exc:
+            logger.exception("Bot polling stopped: %s", exc)
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, POLL_RETRY_MAX_SECONDS)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
