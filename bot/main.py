@@ -6,6 +6,10 @@ from typing import Any
 
 import httpx
 
+from src.core.env import load_env
+
+load_env()
+
 logger = logging.getLogger(__name__)
 
 

@@ -2,6 +2,7 @@ fastapi
 uvicorn
 psycopg2-binary
 sqlalchemy
+python-dotenv
 pytest
 aiogram
 httpx
