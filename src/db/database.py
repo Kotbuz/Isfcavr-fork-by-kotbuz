@@ -3,6 +3,10 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+from src.core.env import load_env
+
+load_env()
+
 DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL is None:
     db_user = os.getenv("DB_USER")
