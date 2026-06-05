@@ -1,0 +1,36 @@
+# Git и локальные секреты
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__
+*.py[cod]
+.venv
+venv
+.pytest_cache
+.ruff_cache
+.mypy_cache
+htmlcov
+.coverage
+
+# Frontend (не нужен образам api/bot)
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# IDE и ОС
+.idea
+.vscode
+.cursor
+*.swp
+.DS_Store
+Thumbs.db
+
+# Прочее
+*.md
+docs
+tests
+backend
