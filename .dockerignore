@@ -1,41 +1,36 @@
-# Ignore Git metadata and Docker helpers
+# Git и локальные секреты
 .git
 .gitignore
-.dockerignore
-
-# Build contexts not needed by the Python image
-frontend/
-backend/
-scripts/
-tests/
-
-# Python artifacts
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.db
-*.sqlite3
-*.log
-.pytest_cache/
-
-# Environment and local files
 .env
 .env.*
-logs/
+!.env.example
 
-# Node.js artifacts
-node_modules/
-frontend/node_modules/
-npm-debug.log*
-yarn-error.log*
+# Python
+__pycache__
+*.py[cod]
+.venv
+venv
+.pytest_cache
+.ruff_cache
+.mypy_cache
+htmlcov
+.coverage
 
-# Build artifacts
-build/
-dist/
+# Frontend (не нужен образам api/bot)
+frontend/node_modules
+frontend/dist
+frontend/.vite
 
-# IDE/editor
-.vscode/
-.idea/
+# IDE и ОС
+.idea
+.vscode
+.cursor
 *.swp
-*.swo
+.DS_Store
+Thumbs.db
+
+# Прочее
+*.md
+docs
+tests
+backend

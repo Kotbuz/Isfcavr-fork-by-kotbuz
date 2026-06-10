@@ -16,7 +16,22 @@ from src.db.database import init_db  # noqa: E402
 from src.routers import box_router, feedback_router  # noqa: E402
 from src.routers.auth_router import router as auth_router  # noqa: E402
 
-app = FastAPI()
+app = FastAPI(
+    title="Anonymous Verified Reviews API",
+    description=(
+        "REST API для сбора анонимных отзывов и управления ими владельцем. "
+        "Публичные эндпоинты не требуют авторизации; для доступа владельца используйте "
+        "`owner_token` (query `token` или заголовок `X-Owner-Token`). "
+        "Аккаунт владельца — через `/auth` и Bearer-токен."
+    ),
+    version="1.0.0",
+    openapi_tags=[
+        {"name": "boxes", "description": "Создание ящиков отзывов (Box)."},
+        {"name": "feedback", "description": "Отправка отзывов и ответы владельца."},
+        {"name": "auth", "description": "Регистрация, вход и личный кабинет владельца."},
+        {"name": "system", "description": "Служебные эндпоинты (health-check)."},
+    ],
+)
 
 
 @app.middleware("http")
@@ -42,12 +57,11 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type", "Accept"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Owner-Token"],
 )
 app.include_router(box_router.router)
 app.include_router(feedback_router.router)
 app.include_router(auth_router)
-
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -65,17 +79,29 @@ def custom_openapi():
     openapi_schema = get_openapi(
         title=app.title,
         version=app.version,
+        description=app.description,
         routes=app.routes,
     )
-    openapi_schema.setdefault("components", {}).setdefault("securitySchemes", {})["BearerAuth"] = {
+    components = openapi_schema.setdefault("components", {})
+    security_schemes = components.setdefault("securitySchemes", {})
+    security_schemes["BearerAuth"] = {
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "token",
+        "description": "Токен из `/auth/register` или `/auth/login`",
     }
-    for path in openapi_schema.get("paths", {}).values():
-        for operation in path.values():
-            if isinstance(operation, dict):
-                operation.setdefault("security", []).append({"BearerAuth": []})
+    security_schemes["OwnerTokenQuery"] = {
+        "type": "apiKey",
+        "in": "query",
+        "name": "token",
+        "description": "Секретный owner_token ящика",
+    }
+    security_schemes["OwnerTokenHeader"] = {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Owner-Token",
+        "description": "Секретный owner_token ящика (альтернатива query-параметру)",
+    }
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
@@ -83,7 +109,7 @@ def custom_openapi():
 app.openapi = custom_openapi
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def root():
     return HTMLResponse(
         """
@@ -105,6 +131,17 @@ def root():
     )
 
 
-@app.get("/health")
+@app.get(
+    "/health",
+    tags=["system"],
+    summary="Проверка доступности API",
+    description="Используется Docker healthcheck и мониторингом.",
+    responses={
+        200: {
+            "description": "Сервис работает",
+            "content": {"application/json": {"example": {"status": "ok"}}},
+        },
+    },
+)
 def health():
     return {"status": "ok"}
