@@ -5,12 +5,16 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from src.core.logging import get_logger, setup_logging
 
+# Initialize logging as early as possible so imported modules use the
+# configured handlers. The following imports must occur after setup;
+# ruff/flake8 marks such imports as E402, so we silence that check
+# on the specific lines below.
 setup_logging()
 logger = get_logger(__name__)
 
-from src.db.database import init_db
-from src.routers import box_router, feedback_router
-from src.routers.auth_router import router as auth_router
+from src.db.database import init_db  # noqa: E402
+from src.routers import box_router, feedback_router  # noqa: E402
+from src.routers.auth_router import router as auth_router  # noqa: E402
 
 app = FastAPI()
 
