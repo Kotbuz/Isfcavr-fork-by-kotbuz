@@ -1,6 +1,7 @@
 __pycache__/
 .env
 logs/
+backups/
 *.pyc
 *.log
 *.db
