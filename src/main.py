@@ -63,6 +63,7 @@ app.include_router(box_router.router)
 app.include_router(feedback_router.router)
 app.include_router(auth_router)
 
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.exception("Unhandled exception for request: %s %s", request.method, request.url.path)
