@@ -1,0 +1,41 @@
+# Ignore Git metadata and Docker helpers
+.git
+.gitignore
+.dockerignore
+
+# Build contexts not needed by the Python image
+frontend/
+backend/
+scripts/
+tests/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+.pytest_cache/
+
+# Environment and local files
+.env
+.env.*
+logs/
+
+# Node.js artifacts
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Build artifacts
+build/
+dist/
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo

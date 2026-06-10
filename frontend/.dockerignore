@@ -1,0 +1,17 @@
+# Node dependencies and build artifacts
+node_modules/
+dist/
+
+# Local env and logs
+.env
+*.log
+
+# Git metadata
+.git
+.gitignore
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo

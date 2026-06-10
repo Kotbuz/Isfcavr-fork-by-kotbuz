@@ -1,13 +1,37 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+
+from src.core.logging import get_logger, setup_logging
+
+setup_logging()
+logger = get_logger(__name__)
 
 from src.db.database import init_db
 from src.routers import box_router, feedback_router
 from src.routers.auth_router import router as auth_router
 
 app = FastAPI()
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    client_host = request.client.host if request.client else "unknown"
+    logger.info("HTTP request: %s %s from %s", request.method, request.url.path, client_host)
+    try:
+        response = await call_next(request)
+        logger.info(
+            "HTTP response: %s %s -> %s",
+            request.method,
+            request.url.path,
+            response.status_code,
+        )
+        return response
+    except Exception:
+        logger.exception("Unhandled exception for request: %s %s", request.method, request.url.path)
+        raise
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,6 +43,13 @@ app.add_middleware(
 app.include_router(box_router.router)
 app.include_router(feedback_router.router)
 app.include_router(auth_router)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled exception for request: %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
 
 # Create tables at import time so TestClient/pytest works reliably.
 init_db()

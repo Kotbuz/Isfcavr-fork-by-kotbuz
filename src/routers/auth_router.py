@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -11,17 +13,21 @@ from src.schemas.user import AuthResponse, LoginRequest, RegisterRequest
 from src.services.user_service import authenticate_user, create_user, get_user_by_token, get_user_by_username
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
     if data.password != data.confirm_password:
+        logger.warning("Registration failed for username=%s: passwords do not match", data.username)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Passwords do not match")
 
     if get_user_by_username(db, data.username) is not None:
+        logger.warning("Registration failed: username already exists: %s", data.username)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
 
     user = create_user(db, data.username, data.password)
+    logger.info("User registered: %s", user.username)
     return AuthResponse(username=user.username, token=user.auth_token)
 
 
@@ -29,7 +35,9 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
 def login(data: LoginRequest, db: Session = Depends(get_db)):
     user = authenticate_user(db, data.username, data.password)
     if user is None:
+        logger.warning("Failed login attempt for username=%s", data.username)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
+    logger.info("User logged in: %s", user.username)
     return AuthResponse(username=user.username, token=user.auth_token)
 
 
@@ -41,13 +49,16 @@ def me(authorization: str = Header(None, alias="Authorization"), db: Session = D
 
 def _get_user_or_401(authorization: str | None, db: Session) -> User:
     if not authorization:
+        logger.warning("Authorization header missing")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authorization header missing")
     token = authorization
     if token.lower().startswith("bearer "):
         token = token[7:].strip()
     user = get_user_by_token(db, token)
     if user is None:
+        logger.warning("Invalid token access attempt")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    logger.info("User authorization succeeded for token owner %s", user.username)
     return user
 
 
